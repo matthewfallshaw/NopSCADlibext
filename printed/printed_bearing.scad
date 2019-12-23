@@ -33,11 +33,14 @@ function pb_bore(type)           = type[1]; //! Internal diameter
 function pb_diameter(type)       = type[2]; //! External diameter
 function pb_width(type)          = type[3]; //! Width
 function pb_clearance(type)      = type[4]; //! Gap between rollers and race
-function pb_roller_count(type)   = 9;  //! Count of rollers
-function pb_roller_dia(type)     = (pb_diameter(type)+pb_bore(type))*sin(180/9)/2
+function pb_roller_count(type)   = 11;  //! Count of rollers
+function pb_roller_dia(type)     = (pb_diameter(type)+pb_bore(type))*sin(180/pb_roller_count(type))/2
                                    -pb_clearance(type); //! Diameter of roller rolling surface
-function pb_race_thickness(type) = (pb_diameter(type)*(1-sin(180/9))-pb_bore(type)*(1+sin(180/9)))/4
+function pb_race_thickness(type) = (pb_diameter(type)*(1-sin(180/pb_roller_count(type)))
+                                    -pb_bore(type)*(1+sin(180/pb_roller_count(type))))/4
                                    -pb_clearance(type)/2; //! Inner and outer race thickness
+
+function _pb_race_rim(type) = pb_width(type)/8;
 
 module printed_bearing(type) { //! Draw a printable roller bearing
   stl(str("printed_bearing(pBB", pb_name(type), "): Roller bearing ", pb_name(type),
@@ -47,6 +50,7 @@ module printed_bearing(type) { //! Draw a printable roller bearing
   od  = pb_diameter(type);
   id  = pb_bore(type);
   th  = pb_race_thickness(type);
+  rim = _pb_race_rim(type);
   cl  = pb_clearance(type);
   n   = pb_roller_count(type);
 
@@ -55,13 +59,25 @@ module printed_bearing(type) { //! Draw a printable roller bearing
       cylinder(h=h,d=od,center=true);
 
       hull() {
-        cylinder(h=h-4*th,d=od-2*th,center=true);
-        cylinder(h=h-2*th,d=od-4*th+cl,center=true);
+        cylinder(h=h-4*rim,d=od-2*th,center=true);
+        cylinder(h=h-2*rim,d=od-2*th-2*rim+cl,center=true);
       }
-      cylinder(h=h+1,d=od-4*th,center=true);
+      cylinder(h=h+1,d=od-2*th-2*rim+cl,center=true);
     }
   }
 
+  // TODO
+  //core_dia = pb_diameter(type)/2-pb_bore(type)/2-2*th-2*rim-pb_clearance(type)*2;
+  *difference() {
+    union() {
+      cylinder(h=w,d=core_dia,center=true);
+      hull() {
+        cylinder(h=w-2*rim,d=core_dia,center=true);
+        cylinder(h=w-4*rim,d=roll_dia,center=true);
+      }
+    }
+  }
+  // TODO
   module race_in(id, h, th, cl) {
     difference(){
       union(){
@@ -75,8 +91,8 @@ module printed_bearing(type) { //! Draw a printable roller bearing
 
     module race_top() {
       hull() {
-        translate([0,0,h/2-2*th]) cylinder(h=2*th,d=id+2*th,center=false);
-        translate([0,0,h/2-th])   cylinder(h=th,  d=id+4*th,center=false);
+        translate([0,0,h/2-2*rim]) cylinder(h=2*rim,d=id+2*th,      center=false);
+        translate([0,0,h/2-rim])   cylinder(h=rim,  d=id+2*th+2*rim,center=false);
       }
     }
   }
@@ -97,7 +113,8 @@ module printed_bearing_roller(type) { //! A printable roller (for a printable ro
   // not calling `vitamin` since these will usually be printed in place with the bearing
 
   th       = pb_race_thickness(type);
-  core_dia = pb_diameter(type)/2-pb_bore(type)/2-th*4-pb_clearance(type)*2;
+  rim      = _pb_race_rim(type);
+  core_dia = pb_diameter(type)/2-pb_bore(type)/2-2*th-2*rim-pb_clearance(type)*2;
   roll_dia = pb_roller_dia(type);
   w        = pb_width(type);
 
@@ -105,21 +122,19 @@ module printed_bearing_roller(type) { //! A printable roller (for a printable ro
     union() {
       cylinder(h=w,d=core_dia,center=true);
       hull() {
-        cylinder(h=w-2*th,d=core_dia,center=true);
-        cylinder(h=w-4*th,d=roll_dia,center=true);
+        cylinder(h=w-2*rim,d=core_dia,center=true);
+        cylinder(h=w-4*rim,d=roll_dia,center=true);
       }
     }
-    translate([0,0,w/2]) phillips(l=core_dia*2/3,w=0.8);
+    translate([0,0,w/2]) screwdriver_cut(l=max(core_dia-2*extrusion_width,2),w=0.8);
   }
 
-  module phillips(l,w) {
+  module screwdriver_cut(l,w) {
+    w2=w*cos(40);
+    l2=l-(w-w2);
     hull() {
-      translate([-l/2,-w/2,0]) cube([l,w,0.1]);
-      translate([-l/3,-w/3,-w]) cube([l*2/3,w*2/3,l*10]);
-    }
-    hull() {
-      rotate(90) translate([-l/2,-w/2,0]) cube([l,w,0.1]);
-      rotate(90) translate([-l/3,-w/3,-w]) cube([l*2/3,w*2/3,l*10]);
+      translate([ -l/2, -w/2, 0]) cube([ l, w,0.1]);
+      translate([-l2/2,-w2/2,-w]) cube([l2,w2,l*10]);
     }
   }
 }
