@@ -32,8 +32,9 @@ function pb_name(type)           = type[0]; //! Part code without shield type su
 function pb_bore(type)           = type[1]; //! Internal diameter
 function pb_diameter(type)       = type[2]; //! External diameter
 function pb_width(type)          = type[3]; //! Width
-function pb_clearance(type)      = type[4]; //! Gap between rollers and race
-function pb_roller_count(type)   = 11;  //! Count of rollers
+function pb_cage(type)           = type[4]; //! Gap between rollers and race
+function pb_clearance(type)      = type[5]; //! Gap between rollers and race
+function pb_roller_count(type)   = 11;      //! Count of rollers
 function pb_roller_dia(type)     = (pb_diameter(type)+pb_bore(type))*sin(180/pb_roller_count(type))/2
                                    -pb_clearance(type); //! Diameter of roller rolling surface
 function pb_race_thickness(type) = (pb_diameter(type)*(1-sin(180/pb_roller_count(type)))
@@ -42,9 +43,11 @@ function pb_race_thickness(type) = (pb_diameter(type)*(1-sin(180/pb_roller_count
 
 function _pb_race_rim(type) = pb_width(type)/8;
 
+
 module printed_bearing(type) { //! Draw a printable roller bearing
   stl(str("printed_bearing(pBB", pb_name(type), "): Roller bearing ", pb_name(type),
-          pb_bore(type), "mm x ", pb_diameter(type), "mm x ", pb_width(type), "mm"));
+          pb_bore(type), "mm x ", pb_diameter(type), "mm x ", pb_width(type), "mm",
+          pb_cage(type) ? " with cage" : ""));
 
   h   = pb_width(type);
   od  = pb_diameter(type);
@@ -66,18 +69,6 @@ module printed_bearing(type) { //! Draw a printable roller bearing
     }
   }
 
-  // TODO
-  //core_dia = pb_diameter(type)/2-pb_bore(type)/2-2*th-2*rim-pb_clearance(type)*2;
-  *difference() {
-    union() {
-      cylinder(h=w,d=core_dia,center=true);
-      hull() {
-        cylinder(h=w-2*rim,d=core_dia,center=true);
-        cylinder(h=w-4*rim,d=roll_dia,center=true);
-      }
-    }
-  }
-  // TODO
   module race_in(id, h, th, cl) {
     difference(){
       union(){
