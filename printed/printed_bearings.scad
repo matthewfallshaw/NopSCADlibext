@@ -33,7 +33,6 @@ pBB605  = [ "605",  5, 14,  5  , false, 0.1];
 pBB606  = [ "606",  6, 17,  6  , false, 0.1];
 pBB607  = [ "607",  7, 19,  6  , false, 0.1];
 pBB608  = [ "608",  8, 22,  7  , false, 0.1]; // 608 bearings for wades
-pBB608c = [ "608",  8, 22,  7  ,  true, 0.1]; // 608 bearings for wades
 pBB609  = [ "609",  9, 24,  7  , false, 0.1];
 
 pBB623  = [ "623",  3, 10,  4  , false, 0.1];

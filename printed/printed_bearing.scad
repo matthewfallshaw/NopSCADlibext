@@ -43,6 +43,23 @@ function pb_race_thickness(type) = (pb_diameter(type)*(1-sin(180/pb_roller_count
 
 function _pb_race_rim(type) = pb_width(type)/8;
 
+module _pb_profile(od, id, h, th, cl, rim, n) {
+  width=(od-id)/2-2*th;
+  polygon([
+            [-width/2     ,  h/2+cl],
+            [ width/2     ,  h/2+cl],
+            [ width/2     ,  h/2-rim],
+            [ width/2-rim ,  h/2-2*rim],
+            [ width/2-rim , -h/2+2*rim],
+            [ width/2     , -h/2+rim],
+            [ width/2     , -h/2-cl],
+            [-width/2     , -h/2-cl],
+            [-width/2     , -h/2+rim],
+            [-width/2+rim , -h/2+2*rim],
+            [-width/2+rim ,  h/2-2*rim],
+            [-width/2     ,  h/2-rim],
+          ]);
+}
 
 module printed_bearing(type) { //! Draw a printable roller bearing
   stl(str("printed_bearing(pBB", pb_name(type), "): Roller bearing ", pb_name(type),
@@ -57,40 +74,27 @@ module printed_bearing(type) { //! Draw a printable roller bearing
   cl  = pb_clearance(type);
   n   = pb_roller_count(type);
 
-  module race_out(od, h, th, cl) {
-    difference(){
-      cylinder(h=h,d=od,center=true);
-
-      hull() {
-        cylinder(h=h-4*rim,d=od-2*th,center=true);
-        cylinder(h=h-2*rim,d=od-2*th-2*rim+cl,center=true);
-      }
-      cylinder(h=h+1,d=od-2*th-2*rim+cl,center=true);
-    }
-  }
-
-  module race_in(id, h, th, cl) {
-    difference(){
-      union(){
-        cylinder(h=h,d=id+2*th,center=true);
-        race_top();
-        mirror([0,0,1]) race_top();
-      }
-
-      cylinder(h=h+1,d=id,center=true);
-    }
-
-    module race_top() {
-      hull() {
-        translate([0,0,h/2-2*rim]) cylinder(h=2*rim,d=id+2*th,      center=false);
-        translate([0,0,h/2-rim])   cylinder(h=rim,  d=id+2*th+2*rim,center=false);
-      }
-    }
-  }
-
   color(pp1_colour) {
-    race_out(od, h, th, cl);
-    race_in( id, h, th, cl);
+    difference() {
+      cylinder(h=h, d=od, center=true);
+
+      cylinder(h=h+1, d=id, center=true);
+      rotate_extrude() translate([id/4+od/4,0,0]) _pb_profile(od, id, h, th, cl, rim, n);
+      // chamfers
+      difference() {
+        for(i=[1,-1]) translate([0,0,i*(h/2-extrusion_width)+0.01])
+          cylinder(h=2*extrusion_width,
+                   d1=od-2*th-i*2*extrusion_width,
+                   d2=od-2*th+i*2*extrusion_width,
+                   center=true);
+
+        for(i=[1,-1]) translate([0,0,i*(h/2-extrusion_width)])
+          cylinder(h=2*extrusion_width+0.01,
+                   d1=id+2*th+i*2*extrusion_width,
+                   d2=id+2*th-i*2*extrusion_width,
+                   center=true);
+      }
+    }
   }
   for (r=[0:n-1]) color(pp3_colour) rotate([0,0,360/n*r])
     translate([id/2+(od/2-id/2)/2,0,0]) printed_bearing_roller(type);
@@ -103,27 +107,32 @@ module printed_bearing(type) { //! Draw a printable roller bearing
 module printed_bearing_roller(type) { //! A printable roller (for a printable roller bearing)
   // not calling `vitamin` since these will usually be printed in place with the bearing
 
-  th       = pb_race_thickness(type);
-  rim      = _pb_race_rim(type);
-  core_dia = pb_diameter(type)/2-pb_bore(type)/2-2*th-2*rim-pb_clearance(type)*2;
-  roll_dia = pb_roller_dia(type);
-  w        = pb_width(type);
+  h   = pb_width(type);
+  od  = pb_diameter(type);
+  id  = pb_bore(type);
+  th  = pb_race_thickness(type);
+  rim = _pb_race_rim(type);
+  cl  = pb_clearance(type);
+  n   = pb_roller_count(type);
+
+  width=(od-id)/2-2*th;
 
   color(pp3_colour) difference() {
-    union() {
-      cylinder(h=w,d=core_dia,center=true);
-      hull() {
-        cylinder(h=w-2*rim,d=core_dia,center=true);
-        cylinder(h=w-4*rim,d=roll_dia,center=true);
-      }
+    rotate_extrude() difference() {
+      offset(delta=-cl) _pb_profile(od, id, h, th, cl, rim, n);
+      translate([-width,-h]) square([width,2*h]);
+      for(i=[1,-1]) translate([width/2-extrusion_width/2,i*(-h/2+extrusion_width/2)])
+        rotate(-45*i) translate([0,-width/2]) square([width,width]);
     }
-    translate([0,0,w/2]) screwdriver_cut(l=max(core_dia-2*extrusion_width,2),w=0.8);
+    screwdriver_cut();
   }
 
-  module screwdriver_cut(l,w) {
+  module screwdriver_cut() {
+    l=width-4*extrusion_width;
+    w=0.8;
     w2=w*cos(40);
     l2=l-(w-w2);
-    hull() {
+    translate([0,0,h/2]) hull() {
       translate([ -l/2, -w/2, 0]) cube([ l, w,0.1]);
       translate([-l2/2,-w2/2,-w]) cube([l2,w2,l*10]);
     }
